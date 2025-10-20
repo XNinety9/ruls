@@ -10,16 +10,18 @@
 * Sorted alphabetically
 * Handles I/O errors gracefully
 * Proper exit codes (0 on success, 1 on failure)
+* Accepts paths (files and directories)
+* Prints directory headers when multiple paths are provided
 
 ## Roadmap
 
-| Version | Goal                              |
-| ------- | --------------------------------- |
-| v0.1    | Basic listing (done)              |
-| v0.2    | Accept paths as arguments         |
-| v0.3    | Add flags: `-a`, `-l`, `-r`, etc. |
-| v0.4    | Colors, icons                     |
-| v0.5+   | Recursive listing, tests, docs    |
+| Version | Goal                                                           |
+| ------- | -------------------------------------------------------------- |
+| v0.1    | Basic listing (done)                                           |
+| v0.2    | Paths as args, file vs dir handling, multi-path headers (done) |
+| v0.3    | Add flags: `-a`, `-l`, `-r`, etc.                              |
+| v0.4    | Colors, icons                                                  |
+| v0.5+   | Recursive listing, tests, docs                                 |
 
 ## Build
 
@@ -30,10 +32,14 @@ cargo build --release
 ## Run
 
 ```bash
+# no args: list current directory
 ./target/release/ruls
+
+# files and directories as operands
+./target/release/ruls Cargo.toml src
 ```
 
-## Install (from binary)
+## Install (from binary) (from binary)
 
 Download the latest release for your platform from
 [GitHub Releases](https://github.com/XNinety9/ruls/releases).

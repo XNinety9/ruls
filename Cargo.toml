@@ -4,3 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+opt-level = "z"         # prioritize size
+lto = true              # full LTO for size
+codegen-units = 1       # better optimization, smaller
+panic = "abort"         # no unwinding runtime
+debug = 0               # no debug info
+# strip = true          # optional (Cargo ≥1.70). If you enable this, you can drop the CI strip step.
+incremental = false
