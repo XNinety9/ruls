@@ -13,6 +13,8 @@ pub struct Options {
     pub show_hidden: bool,
     pub reverse: bool,
     pub long: bool,
+    pub bytes: bool,
+    pub nocolor: bool,
     // later: long, group_dirs, color, etc.
 }
 

@@ -13,6 +13,12 @@ struct Args {
     #[arg(short = 'l', long = "long", default_value_t = false, help = "Display long format")]
     long: bool,
 
+    #[arg(short = 'B', long = "bytes", default_value_t = false, help = "Display file size in bytes")]
+    bytes: bool,
+
+    #[arg(long = "nocolor", default_value_t = false, help = "Don't use colored output")]
+    nocolor: bool,
+
     paths: Vec<PathBuf>,
 }
 
@@ -23,6 +29,8 @@ fn main() -> anyhow::Result<()> {
         show_hidden: args.show_hidden,
         reverse: args.reverse,
         long: args.long,
+        bytes: args.bytes,
+        nocolor: args.nocolor
     };
 
     run(&opts, &args.paths)?;

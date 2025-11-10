@@ -8,7 +8,7 @@
             "cargo": {
                 "args": ["build"]
             },
-            "args": ["."],
+            "args": ["-la", "."],
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
             "stopOnEntry": false,

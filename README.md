@@ -39,6 +39,10 @@ cargo build --release
 ./target/release/ruls Cargo.toml src
 ```
 
+# TODO
+
+- [ ] JSON/Table output
+
 ## Install (from binary) (from binary)
 
 Download the latest release for your platform from
