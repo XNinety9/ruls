@@ -1,56 +1,30 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 use clap::Parser;
+use ruls::{run, model::Options};
 
 #[derive(Parser)]
 struct Args {
+    #[arg(short = 'a', long = "all", default_value_t = false, help = "Include hidden files")]
+    show_hidden: bool,
+
+    #[arg(short = 'r', long = "reverse", default_value_t = false, help = "Reverse sort order")]
+    reverse: bool,
+
+    #[arg(short = 'l', long = "long", default_value_t = false, help = "Display long format")]
+    long: bool,
+
     paths: Vec<PathBuf>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> anyhow::Result<()> {
+    // Parse CLI args
     let args = Args::parse();
+    let opts = Options {
+        show_hidden: args.show_hidden,
+        reverse: args.reverse,
+        long: args.long,
+    };
 
-    let mut first = true;
-
-    for path in &args.paths {
-        if path.is_file() {
-            println!("{}", path.display());
-            continue;
-        }
-
-        if args.paths.len() > 1 {
-            println!("{}{}:", if first {""} else {"\n"}, path.display());
-        }
-        first = false;
-
-        let mut file_list: Vec<String> = Vec::new();
-
-        // Iterate through files and folders
-        if let Ok(entries) = fs::read_dir(path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let filename = match entry.file_name().into_string() {
-                        Ok(s) => s,
-                        Err(e) => {
-                            eprintln!("Error while processing file \"{:?}\": {}", entry.file_name(), e.display());
-                            continue;
-                        }
-                    };
-                    if filename.starts_with(".") {
-                        continue;
-                    }
-                    file_list.push(filename);
-                }
-            }
-        }
-
-        // Sort
-        file_list.sort();
-
-        // Print
-        for file in file_list {
-            println!("{file}");
-        }
-    }
-
+    run(&opts, &args.paths)?;
     Ok(())
 }

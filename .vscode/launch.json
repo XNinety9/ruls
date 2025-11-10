@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug cfgparse",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build"]
+            },
+            "args": ["."],
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+            "stopOnEntry": false,
+            "sourceLanguages": ["rust"],
+            "env": {},
+            "console": "integratedTerminal"
+        }
+    ]
+}
