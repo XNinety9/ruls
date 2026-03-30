@@ -271,11 +271,13 @@ pub fn filter_entries(entries: Vec<(PathBuf, Vec<Entry>)>, settings: &Settings) 
 }
 
 fn compare_entries(a: &Entry, b: &Entry, settings: &Settings) -> std::cmp::Ordering {
-    match settings.sort_by {
+    let by_type = b.is_dir.cmp(&a.is_dir);
+    let by_field = match settings.sort_by {
         SortBy::Name => a.name.cmp(&b.name),
         SortBy::Size => a.size.cmp(&b.size),
         SortBy::Date => a.modified.cmp(&b.modified),
-    }
+    };
+    by_type.then(by_field)
 }
 
 pub fn sort_entries(
