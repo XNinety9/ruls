@@ -8,6 +8,7 @@ mod icon;
 use settings::Settings;
 use entry::{read_entries, filter_entries, sort_entries, display_entries, DisplayConfig};
 
+/// Point d'entrée : parse les arguments, lit, filtre, trie puis affiche les entrées.
 fn main() {
     let args: Vec<String> = env::args().collect();
 

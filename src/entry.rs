@@ -3,13 +3,14 @@ use std::fs;
 use std::time::SystemTime;
 use chrono::{DateTime, Local};
 use ansi_term::Style;
-use uzers::{get_user_by_uid, User};
+use uzers::get_user_by_uid;
 
 use crate::settings::{Settings, SortBy};
 use crate::theme::Theme;
 use crate::icon::icon_for;
 
 
+/// Représente un fichier ou répertoire avec toutes ses métadonnées.
 pub struct Entry {
     pub name: String,
     // pub path: PathBuf,
@@ -22,6 +23,9 @@ pub struct Entry {
 }
 
 impl Entry {
+    /// Formate la taille en unités lisibles (k, M, G…).
+    /// Si `theme` est fourni, applique la couleur correspondant à l'ordre de grandeur.
+    /// Retourne `"-"` pour les répertoires.
     pub fn format_size(&self, theme: Option<&Theme>) -> String {
         if self.is_dir {
             return match theme {
@@ -56,6 +60,8 @@ impl Entry {
         }
     }
 
+    /// Formate les permissions Unix au format `drwxrwxrwx`.
+    /// Si `theme` est fourni, chaque bit est coloré individuellement.
     pub fn format_mode(&self, theme: Option<&Theme>) -> String {
         let Some(theme) = theme else {
             return format!("{}{}{}{}{}{}{}{}{}{}",
@@ -96,11 +102,17 @@ impl Entry {
     }
 
 
-    fn format_time(&self, theme: &Theme) -> String {
+    /// Formate la date de dernière modification au format `JJ Mmm HH:MM`.
+    /// Si `theme` est fourni, applique la couleur de date. Retourne `""` si la date est indisponible.
+    fn format_time(&self, theme: Option<&Theme>) -> String {
         match self.modified {
             Some(t) => {
                 let dt: DateTime<Local> = DateTime::from(t);
-                theme.date.paint(dt.format("%d %b %H:%M").to_string()).to_string()
+                let s = dt.format("%d %b %H:%M").to_string();
+                match theme {
+                    Some(t) => t.date.paint(s).to_string(),
+                    None    => s,
+                }
             },
             None => String::from("")
         }
@@ -177,31 +189,55 @@ mod tests {
     }
 }
 
+/// Définit une colonne d'affichage en mode long.
+/// `display` produit la version colorée, `raw` la version brute pour calculer les largeurs.
+struct Column {
+    header: &'static str,
+    display: fn(&Entry, &Theme) -> String,
+    raw:     fn(&Entry)         -> String,
+}
+
+/// Retourne la liste ordonnée des colonnes affichées en mode long.
+/// C'est ici qu'on ajoute ou retire une colonne.
+fn columns() -> Vec<Column> {
+    vec![
+        Column { header: "Perms",  display: |e, t| e.format_mode(Some(t)), raw: |e| e.format_mode(None) },
+        Column { header: "Size",   display: |e, t| e.format_size(Some(t)), raw: |e| e.format_size(None) },
+        Column { header: "Owner",  display: |e, _| e.owner.clone(),         raw: |e| e.owner.clone()     },
+        Column { header: "Date",   display: |e, t| e.format_time(Some(t)), raw: |e| e.format_time(None)  },
+    ]
+}
+
+/// Largeurs maximales calculées sur l'ensemble des entrées, pour aligner les colonnes.
 pub struct DisplayConfig {
-    pub max_size_len: usize,
+    pub col_widths:   Vec<usize>,
     // pub max_name_len: usize,
-    // plus tard : max_user_len, max_group_len...
 }
 
 impl DisplayConfig {
+    /// Parcourt toutes les entrées pour calculer la largeur maximale de chaque colonne.
     pub fn from_entries(entries: &[(PathBuf, Vec<Entry>)]) -> DisplayConfig {
-        let mut max_size = 0;
-        // let mut max_name = 0;
+        let cols = columns();
+        let mut col_widths: Vec<usize> = cols.iter().map(|c| c.header.len()).collect();
+        let mut max_name = 0;
 
         for (_, dir_contents) in entries {
             for entry in dir_contents {
-                let size_len = entry.format_size(None).len();
-                // let name_len = entry.name.len();
-                if size_len > max_size { max_size = size_len; }
-                // if name_len > max_name { max_name = name_len; }
+                for (i, col) in cols.iter().enumerate() {
+                    let w = (col.raw)(entry).len();
+                    if w > col_widths[i] { col_widths[i] = w; }
+                }
+                if entry.name.len() > max_name { max_name = entry.name.len(); }
             }
         }
 
-        DisplayConfig { max_size_len: max_size }
+        DisplayConfig { col_widths }
     }
 }
 
 
+/// Lit le contenu des répertoires spécifiés dans `settings.paths`.
+/// Les liens symboliques cassés ou les entrées inaccessibles sont silencieusement ignorés.
 pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
     let mut result: Vec<(PathBuf, Vec<Entry>)> = Vec::new();
 
@@ -247,6 +283,7 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
     result
 }
 
+/// Retourne `true` si l'entrée doit être affichée selon les paramètres courants.
 fn should_include(entry: &Entry, settings: &Settings) -> bool {
     // Fichiers cachés
     if !settings.show_hidden && entry.name.starts_with('.') {
@@ -260,6 +297,7 @@ fn should_include(entry: &Entry, settings: &Settings) -> bool {
     true
 }
 
+/// Filtre les entrées de chaque répertoire selon les paramètres (fichiers cachés, etc.).
 pub fn filter_entries(entries: Vec<(PathBuf, Vec<Entry>)>, settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
     let mut result = Vec::new();
 
@@ -278,6 +316,7 @@ pub fn filter_entries(entries: Vec<(PathBuf, Vec<Entry>)>, settings: &Settings) 
     result
 }
 
+/// Compare deux entrées : répertoires avant fichiers, puis selon `settings.sort_by`.
 fn compare_entries(a: &Entry, b: &Entry, settings: &Settings) -> std::cmp::Ordering {
     let by_type = b.is_dir.cmp(&a.is_dir);
     let by_field = match settings.sort_by {
@@ -288,6 +327,7 @@ fn compare_entries(a: &Entry, b: &Entry, settings: &Settings) -> std::cmp::Order
     by_type.then(by_field)
 }
 
+/// Trie les entrées de chaque répertoire selon les paramètres.
 pub fn sort_entries(
     mut entries: Vec<(PathBuf, Vec<Entry>)>,
     settings: &Settings
@@ -298,47 +338,52 @@ pub fn sort_entries(
     entries
 }
 
+/// Affiche une entrée sur une ligne — format long ou format court selon `settings.long_format`.
 fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
     let name_and_icon = format!("{} {}", icon_for(entry), entry.name);
-    let name = 
+    let name =
         if entry.is_dir                  { theme.dir.paint(name_and_icon) }
         else if entry.is_symlink         { theme.symlink.paint(name_and_icon) }
         else if entry.mode & 0o111 != 0  { theme.executable.paint(name_and_icon) }
         else                             { theme.file.paint(name_and_icon) };
 
-    if settings.long_format == true {
-        let size_colored = if entry.is_dir {
-            theme.size_bytes.paint("-").to_string()
-        } else {
-            entry.format_size(Some(theme))
-        };
-        let size_padding = display_config.max_size_len.saturating_sub(entry.format_size(None).len());
-        // let name_padding = display_config.max_name_len.saturating_sub(entry.name.len());
-
-        println!("{} {:>size_pad$}{} {} {} {}",
-            entry.format_mode(Some(theme)),
-            "", 
-            size_colored,   // padding + taille colorée
-            entry.owner,
-            entry.format_time(theme),
-            name,           // padding + nom coloré
-            size_pad = size_padding
-        )
+    if settings.long_format {
+        let parts: String = columns().iter().enumerate()
+            .map(|(i, c)| {
+                let colored = (c.display)(entry, theme);
+                let visible_len = (c.raw)(entry).len();
+                let pad = display_config.col_widths[i].saturating_sub(visible_len);
+                format!("{}{:>pad$}", colored, "", pad = pad)
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        println!("{} {}", parts, name);
     } else {
         let suffix = if entry.is_dir { "/" } else { "" };
         println!("{}{}", entry.name, suffix);
     }
 }
 
+/// Affiche le contenu d'un répertoire, avec optionnellement son chemin en en-tête
+/// et la ligne de titres des colonnes si `settings.show_header` est actif.
 fn display_dir(path: &PathBuf, contents: &Vec<Entry>, show_header: bool, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
     if show_header {
         println!("{}:", path.to_string_lossy());
+    }
+    if settings.long_format && settings.show_header {
+        let headers: String = columns().iter().enumerate()
+            .map(|(i, c)| format!("{:<width$}", c.header, width = display_config.col_widths[i]))
+            .collect::<Vec<_>>()
+            .join(" ");
+        println!("{} Name", headers);
     }
     for entry in contents {
         display_entry(entry, settings, display_config, theme);
     }
 }
 
+/// Point d'entrée de l'affichage. Crée le thème et itère sur les répertoires.
+/// Affiche le chemin de chaque répertoire en en-tête si plusieurs sont listés.
 pub fn display_entries(entries: &[(PathBuf, Vec<Entry>)], settings: &Settings, display_config: &DisplayConfig) {
     let theme = Theme::default();
 

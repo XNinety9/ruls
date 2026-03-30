@@ -1,5 +1,6 @@
 use crate::entry::Entry;
 
+/// Retourne l'icône Unicode (Nerd Font) correspondant au type ou à l'extension du fichier.
 pub fn icon_for(entry: &Entry) -> char {
     if entry.is_dir     { return '\u{f024b}'; }  // 󰉋 folder
     if entry.is_symlink { return '\u{f0339}'; }  // 󰌹 symlink
