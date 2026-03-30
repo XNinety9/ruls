@@ -11,7 +11,7 @@ use crate::icon::icon_for;
 
 pub struct Entry {
     pub name: String,
-    pub path: PathBuf,
+    // pub path: PathBuf,
     pub is_dir: bool,
     pub is_symlink: bool,
     pub size: u64,
@@ -21,6 +21,13 @@ pub struct Entry {
 
 impl Entry {
     pub fn format_size(&self, theme: Option<&Theme>) -> String {
+        if self.is_dir {
+            return match theme {
+                Some(t) => t.size_none.paint("-").to_string(),
+                None => String::from("-"),
+            }
+        }
+
         static UNITS: [&str; 7] = ["", "k", "M", "G", "T", "P", "E"];
         let mut unit = 0;
         if self.size < 1000 {
@@ -105,7 +112,7 @@ mod tests {
     fn dummy_entry() -> Entry {
         Entry {
             name: String::from("foo"),
-            path: PathBuf::from("foo"),
+            // path: PathBuf::from("foo"),
             is_dir: false,
             is_symlink: false,
             size: 0,
@@ -170,25 +177,25 @@ mod tests {
 
 pub struct DisplayConfig {
     pub max_size_len: usize,
-    pub max_name_len: usize,
+    // pub max_name_len: usize,
     // plus tard : max_user_len, max_group_len...
 }
 
 impl DisplayConfig {
     pub fn from_entries(entries: &[(PathBuf, Vec<Entry>)]) -> DisplayConfig {
         let mut max_size = 0;
-        let mut max_name = 0;
+        // let mut max_name = 0;
 
         for (_, dir_contents) in entries {
             for entry in dir_contents {
                 let size_len = entry.format_size(None).len();
-                let name_len = entry.name.len();
+                // let name_len = entry.name.len();
                 if size_len > max_size { max_size = size_len; }
-                if name_len > max_name { max_name = name_len; }
+                // if name_len > max_name { max_name = name_len; }
             }
         }
 
-        DisplayConfig { max_size_len: max_size, max_name_len: max_name }
+        DisplayConfig { max_size_len: max_size }
     }
 }
 
@@ -215,13 +222,14 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
 
             let entry = Entry {
                 name: raw.file_name().to_string_lossy().to_string(),
-                path: raw.path(),
+                // path: raw.path(),
                 is_dir: metadata.is_dir(),
                 is_symlink,
                 size: metadata.len(),
                 modified: metadata.modified().ok(), // Ok(t) → Some(t), Err → None
                 mode: metadata.mode(),
             };
+
             dir_contents.push(entry);
         }
 
@@ -265,8 +273,8 @@ pub fn filter_entries(entries: Vec<(PathBuf, Vec<Entry>)>, settings: &Settings) 
 fn compare_entries(a: &Entry, b: &Entry, settings: &Settings) -> std::cmp::Ordering {
     match settings.sort_by {
         SortBy::Name => a.name.cmp(&b.name),
-        // SortBy::Size => a.size.cmp(&b.size),
-        // SortBy::Date => a.modified.cmp(&b.modified),
+        SortBy::Size => a.size.cmp(&b.size),
+        SortBy::Date => a.modified.cmp(&b.modified),
     }
 }
 
@@ -288,21 +296,23 @@ fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayCon
         else                             { theme.file.paint(&entry.name) };
 
     if settings.long_format == true {
-        let size_colored = entry.format_size(Some(theme));
-        // {:>width$} compte les codes ANSI comme des caractères visibles → alignement faussé.
-        // On calcule le padding manuellement à partir de la longueur visible (sans couleur).
+        let size_colored = if entry.is_dir {
+            theme.size_bytes.paint("-").to_string()
+        } else {
+            entry.format_size(Some(theme))
+        };
         let size_padding = display_config.max_size_len.saturating_sub(entry.format_size(None).len());
-        let name_padding = display_config.max_name_len.saturating_sub(entry.name.len());
+        // let name_padding = display_config.max_name_len.saturating_sub(entry.name.len());
 
-        println!("{} {:>size_pad$}{} {} {} {:>name_pad$}{}",
+        println!("{} {:>size_pad$}{} {} {}{}{}",
             entry.format_mode(Some(theme)),
-            "", size_colored,   // padding + taille colorée
+            "", 
+            size_colored,   // padding + taille colorée
             entry.format_time(theme),
             icon_for(entry),
             " ", 
             name,           // padding + nom coloré
             size_pad = size_padding,
-            name_pad = name_padding,
         )
     } else {
         let suffix = if entry.is_dir { "/" } else { "" };

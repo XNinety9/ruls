@@ -1,52 +1,34 @@
 use std::path::PathBuf;
+use clap::{Parser, ValueEnum};
 
+#[derive(Parser)]
+#[command(name = "ruls", about = "A modern ls replacement written in Rust")]
 pub struct Settings {
+    /// Show hidden files (dot files)
+    #[arg(short = 'a', long = "all")]
+    pub show_hidden: bool,
+
+    /// Long format (permissions, size, date)
+    #[arg(short = 'l', long = "long")]
+    pub long_format: bool,
+
+    /// Sort by field: name, size, date
+    #[arg(short = 's', long = "sort", value_name = "CRITERIA", default_value = "name")]
+    pub sort_by: SortBy,
+
+    /// Directories to list (defaults to current directory)
     pub paths: Vec<PathBuf>,
-    pub show_hidden: bool,      // -a
-    pub long_format: bool,      // -l
-    pub sort_by: SortBy,     // --sort
 }
 
-pub enum SortBy { Name}
+#[derive(ValueEnum, Clone)]
+pub enum SortBy {
+    Name,
+    Size,
+    Date,
+}
 
 impl Settings {
     pub fn from_args(args: &[String]) -> Settings {
-        let mut settings = Settings::default();
-
-        for arg in args.iter().skip(1) {
-            if arg.starts_with("--") {
-                // Parse long flags
-            } else if arg.starts_with("-") {
-                // Parse short flags
-                let arg = &arg[1..];
-                match arg {
-                    "a" => settings.show_hidden = true,
-                    "s" => settings.sort_by = SortBy::Name,
-                    "l" => settings.long_format = true,
-                    _ => eprintln!("Unknown parameter '-{}', ignoring", arg)
-                }
-            } else {
-                // These are the paths to explore
-                settings.paths.push(PathBuf::from(arg));
-            }
-        }
-
-        // If no directory to explore was provided, list current directory
-        if settings.paths.is_empty() {
-            settings.paths.push(PathBuf::from("."));
-        }
-
-        settings
-    }
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            paths: Vec::new(),
-            show_hidden: false,
-            sort_by: SortBy::Name,
-            long_format: false,
-        }
+        Settings::parse_from(args)
     }
 }

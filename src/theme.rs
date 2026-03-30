@@ -3,21 +3,22 @@ use ansi_term::{Style, Color};
 pub struct Theme {
     pub dir:        Style,
     pub symlink:    Style,
-    pub bkn_symlink:Style,
+    // pub bkn_symlink:Style,
     pub executable: Style,
     pub file:       Style,
 
+    pub size_none:         Style,
     pub size_bytes:        Style,
     pub size_kbytes:       Style,
     pub size_mbytes:       Style,
     pub size_gbytes:       Style,
     pub size_tbytes:       Style,
     
-    pub date:       Style,
+    pub date:              Style,
 
-    pub perm_r_user:      Style,
-    pub perm_w_user:      Style,
-    pub perm_x_user:      Style,
+    pub perm_r_user:       Style,
+    pub perm_w_user:       Style,
+    pub perm_x_user:       Style,
     pub perm_r_group:      Style,
     pub perm_w_group:      Style,
     pub perm_x_group:      Style,
@@ -32,10 +33,11 @@ impl Default for Theme {
         Theme {
             dir:            Color::Blue.bold(),
             symlink:        Color::Cyan.normal(),
-            bkn_symlink:    Color::Red.normal(),
+            // bkn_symlink:    Color::Red.normal(),
             executable:     Color::Green.bold(),
             file:           Style::new(),
 
+            size_none:      Color::RGB(100, 100, 100).bold(),            
             size_bytes:     Color::Green.normal(),
             size_kbytes:    Color::Green.bold(),
             size_mbytes:    Color::Yellow.normal(),
