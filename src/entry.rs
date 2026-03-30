@@ -3,6 +3,7 @@ use std::fs;
 use std::time::SystemTime;
 use chrono::{DateTime, Local};
 use ansi_term::Style;
+use uzers::{get_user_by_uid, User};
 
 use crate::settings::{Settings, SortBy};
 use crate::theme::Theme;
@@ -17,6 +18,7 @@ pub struct Entry {
     pub size: u64,
     pub modified: Option<SystemTime>,
     pub mode: u32,
+    pub owner: String,
 }
 
 impl Entry {
@@ -220,6 +222,11 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
                 Err(_) => continue, // lien cassé ou permission refusée — on ignore
             };
 
+            let user = match get_user_by_uid(metadata.uid()) {
+                Some(s) => s.name().to_string_lossy().into_owned(),
+                None => String::from("")
+            };
+
             let entry = Entry {
                 name: raw.file_name().to_string_lossy().to_string(),
                 // path: raw.path(),
@@ -228,6 +235,7 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
                 size: metadata.len(),
                 modified: metadata.modified().ok(), // Ok(t) → Some(t), Err → None
                 mode: metadata.mode(),
+                owner: user
             };
 
             dir_contents.push(entry);
@@ -291,11 +299,12 @@ pub fn sort_entries(
 }
 
 fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
+    let name_and_icon = format!("{} {}", icon_for(entry), entry.name);
     let name = 
-        if entry.is_dir                  { theme.dir.paint(&entry.name) }
-        else if entry.is_symlink         { theme.symlink.paint(&entry.name) }
-        else if entry.mode & 0o111 != 0  { theme.executable.paint(&entry.name) }
-        else                             { theme.file.paint(&entry.name) };
+        if entry.is_dir                  { theme.dir.paint(name_and_icon) }
+        else if entry.is_symlink         { theme.symlink.paint(name_and_icon) }
+        else if entry.mode & 0o111 != 0  { theme.executable.paint(name_and_icon) }
+        else                             { theme.file.paint(name_and_icon) };
 
     if settings.long_format == true {
         let size_colored = if entry.is_dir {
@@ -306,15 +315,14 @@ fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayCon
         let size_padding = display_config.max_size_len.saturating_sub(entry.format_size(None).len());
         // let name_padding = display_config.max_name_len.saturating_sub(entry.name.len());
 
-        println!("{} {:>size_pad$}{} {} {}{}{}",
+        println!("{} {:>size_pad$}{} {} {} {}",
             entry.format_mode(Some(theme)),
             "", 
             size_colored,   // padding + taille colorée
+            entry.owner,
             entry.format_time(theme),
-            icon_for(entry),
-            " ", 
             name,           // padding + nom coloré
-            size_pad = size_padding,
+            size_pad = size_padding
         )
     } else {
         let suffix = if entry.is_dir { "/" } else { "" };

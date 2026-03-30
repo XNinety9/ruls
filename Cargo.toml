@@ -7,3 +7,4 @@ edition = "2024"
 ansi_term = "0.12.1"
 chrono = "0.4.44"
 clap = { version = "4", features = ["derive"] }
+uzers = "0.12.2"
