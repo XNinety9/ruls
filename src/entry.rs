@@ -194,8 +194,16 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
 
     for path in &settings.paths {
         let mut dir_contents: Vec<Entry> = Vec::new();
-        println!("Reading {}", path.to_string_lossy());
-        for raw in fs::read_dir(path).unwrap() {
+
+        let read_dir = match fs::read_dir(path) {
+            Ok(r) => r,
+            Err(_) => {
+                eprintln!("Error: file or folder not found '{}'", path.to_string_lossy());
+                continue;
+            }
+        };
+
+        for raw in read_dir {
             let raw = raw.unwrap();  // raw : DirEntry
 
             // file_type() lit le type du lien lui-même, sans suivre la cible

@@ -77,7 +77,7 @@ fn display_dir(path: &PathBuf, contents: &Vec<Entry>, show_header: bool, setting
             .map(|(i, c)| format!("{:<width$}", c.header, width = display_config.col_widths[i]))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("{} Name", headers);
+        println!("{} {}", theme.header.paint(headers), theme.header.paint("Name        "));
     }
     for entry in contents {
         display_entry(entry, settings, display_config, theme);
