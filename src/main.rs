@@ -4,9 +4,12 @@ mod entry;
 mod settings;
 mod theme;
 mod icon;
+mod display;
 
 use settings::Settings;
-use entry::{read_entries, filter_entries, sort_entries, display_entries, DisplayConfig};
+use entry::{read_entries, filter_entries, sort_entries};
+use display::{display_entries, DisplayConfig};
+
 
 /// Point d'entrée : parse les arguments, lit, filtre, trie puis affiche les entrées.
 fn main() {

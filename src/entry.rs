@@ -7,8 +7,6 @@ use uzers::get_user_by_uid;
 
 use crate::settings::{Settings, SortBy};
 use crate::theme::Theme;
-use crate::icon::icon_for;
-
 
 /// Représente un fichier ou répertoire avec toutes ses métadonnées.
 pub struct Entry {
@@ -101,10 +99,9 @@ impl Entry {
         )
     }
 
-
     /// Formate la date de dernière modification au format `JJ Mmm HH:MM`.
     /// Si `theme` est fourni, applique la couleur de date. Retourne `""` si la date est indisponible.
-    fn format_time(&self, theme: Option<&Theme>) -> String {
+    pub fn format_time(&self, theme: Option<&Theme>) -> String {
         match self.modified {
             Some(t) => {
                 let dt: DateTime<Local> = DateTime::from(t);
@@ -132,6 +129,7 @@ mod tests {
             size: 0,
             modified: Some(SystemTime::now()),
             mode: 0,
+            owner: String::new()
         }
     }
 
@@ -189,53 +187,6 @@ mod tests {
     }
 }
 
-/// Définit une colonne d'affichage en mode long.
-/// `display` produit la version colorée, `raw` la version brute pour calculer les largeurs.
-struct Column {
-    header: &'static str,
-    display: fn(&Entry, &Theme) -> String,
-    raw:     fn(&Entry)         -> String,
-}
-
-/// Retourne la liste ordonnée des colonnes affichées en mode long.
-/// C'est ici qu'on ajoute ou retire une colonne.
-fn columns() -> Vec<Column> {
-    vec![
-        Column { header: "Perms",  display: |e, t| e.format_mode(Some(t)), raw: |e| e.format_mode(None) },
-        Column { header: "Size",   display: |e, t| e.format_size(Some(t)), raw: |e| e.format_size(None) },
-        Column { header: "Owner",  display: |e, _| e.owner.clone(),         raw: |e| e.owner.clone()     },
-        Column { header: "Date",   display: |e, t| e.format_time(Some(t)), raw: |e| e.format_time(None)  },
-    ]
-}
-
-/// Largeurs maximales calculées sur l'ensemble des entrées, pour aligner les colonnes.
-pub struct DisplayConfig {
-    pub col_widths:   Vec<usize>,
-    // pub max_name_len: usize,
-}
-
-impl DisplayConfig {
-    /// Parcourt toutes les entrées pour calculer la largeur maximale de chaque colonne.
-    pub fn from_entries(entries: &[(PathBuf, Vec<Entry>)]) -> DisplayConfig {
-        let cols = columns();
-        let mut col_widths: Vec<usize> = cols.iter().map(|c| c.header.len()).collect();
-        let mut max_name = 0;
-
-        for (_, dir_contents) in entries {
-            for entry in dir_contents {
-                for (i, col) in cols.iter().enumerate() {
-                    let w = (col.raw)(entry).len();
-                    if w > col_widths[i] { col_widths[i] = w; }
-                }
-                if entry.name.len() > max_name { max_name = entry.name.len(); }
-            }
-        }
-
-        DisplayConfig { col_widths }
-    }
-}
-
-
 /// Lit le contenu des répertoires spécifiés dans `settings.paths`.
 /// Les liens symboliques cassés ou les entrées inaccessibles sont silencieusement ignorés.
 pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
@@ -243,7 +194,7 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
 
     for path in &settings.paths {
         let mut dir_contents: Vec<Entry> = Vec::new();
-
+        println!("Reading {}", path.to_string_lossy());
         for raw in fs::read_dir(path).unwrap() {
             let raw = raw.unwrap();  // raw : DirEntry
 
@@ -338,62 +289,3 @@ pub fn sort_entries(
     entries
 }
 
-/// Affiche une entrée sur une ligne — format long ou format court selon `settings.long_format`.
-fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
-    let name_and_icon = format!("{} {}", icon_for(entry), entry.name);
-    let name =
-        if entry.is_dir                  { theme.dir.paint(name_and_icon) }
-        else if entry.is_symlink         { theme.symlink.paint(name_and_icon) }
-        else if entry.mode & 0o111 != 0  { theme.executable.paint(name_and_icon) }
-        else                             { theme.file.paint(name_and_icon) };
-
-    if settings.long_format {
-        let parts: String = columns().iter().enumerate()
-            .map(|(i, c)| {
-                let colored = (c.display)(entry, theme);
-                let visible_len = (c.raw)(entry).len();
-                let pad = display_config.col_widths[i].saturating_sub(visible_len);
-                format!("{}{:>pad$}", colored, "", pad = pad)
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        println!("{} {}", parts, name);
-    } else {
-        let suffix = if entry.is_dir { "/" } else { "" };
-        println!("{}{}", entry.name, suffix);
-    }
-}
-
-/// Affiche le contenu d'un répertoire, avec optionnellement son chemin en en-tête
-/// et la ligne de titres des colonnes si `settings.show_header` est actif.
-fn display_dir(path: &PathBuf, contents: &Vec<Entry>, show_header: bool, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
-    if show_header {
-        println!("{}:", path.to_string_lossy());
-    }
-    if settings.long_format && settings.show_header {
-        let headers: String = columns().iter().enumerate()
-            .map(|(i, c)| format!("{:<width$}", c.header, width = display_config.col_widths[i]))
-            .collect::<Vec<_>>()
-            .join(" ");
-        println!("{} Name", headers);
-    }
-    for entry in contents {
-        display_entry(entry, settings, display_config, theme);
-    }
-}
-
-/// Point d'entrée de l'affichage. Crée le thème et itère sur les répertoires.
-/// Affiche le chemin de chaque répertoire en en-tête si plusieurs sont listés.
-pub fn display_entries(entries: &[(PathBuf, Vec<Entry>)], settings: &Settings, display_config: &DisplayConfig) {
-    let theme = Theme::default();
-
-    // Afficher l'en-tête du répertoire seulement si on en a plusieurs
-    let show_header = entries.len() > 1;
-
-    for (path, contents) in entries {
-        display_dir(path, contents, show_header, settings, display_config, &theme);
-        if show_header {
-            println!(); // ligne vide entre les répertoires
-        }
-    }
-}
