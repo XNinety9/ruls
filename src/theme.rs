@@ -4,7 +4,7 @@ pub struct Theme {
     pub header:     Style,
     pub dir:        Style,
     pub symlink:    Style,
-    // pub bkn_symlink:Style,
+    pub bkn_symlink:Style,
     pub executable: Style,
     pub file:       Style,
 
@@ -35,7 +35,7 @@ impl Default for Theme {
             header:         Color::White.underline(),
             dir:            Color::Blue.bold(),
             symlink:        Color::Cyan.normal(),
-            // bkn_symlink:    Color::Red.normal(),
+            bkn_symlink:    Color::Red.normal(),
             executable:     Color::Green.bold(),
             file:           Style::new(),
 

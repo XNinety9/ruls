@@ -24,11 +24,18 @@ pub fn display_entries(entries: &[(PathBuf, Vec<Entry>)], settings: &Settings, d
 /// Affiche une entrée sur une ligne — format long ou format court selon `settings.long_format`.
 fn display_entry(entry: &Entry, settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
     let name_and_icon = format!("{} {}", icon_for(entry), entry.name);
-    let name =
-        if entry.is_dir                  { theme.dir.paint(name_and_icon) }
-        else if entry.is_symlink         { theme.symlink.paint(name_and_icon) }
-        else if entry.mode & 0o111 != 0  { theme.executable.paint(name_and_icon) }
-        else                             { theme.file.paint(name_and_icon) };
+    let name = if entry.is_dir {
+        theme.dir.paint(name_and_icon).to_string()
+    } else if entry.is_symlink {
+        let destination = entry.symlink_destination.to_string_lossy();
+        let arrow = format!("{name_and_icon} -> {destination}");
+        if entry.is_symlink_valid { theme.symlink.paint(arrow).to_string() }
+        else                       { theme.bkn_symlink.paint(arrow).to_string() }
+    } else if entry.mode & 0o111 != 0 {
+        theme.executable.paint(name_and_icon).to_string()
+    } else {
+        theme.file.paint(name_and_icon).to_string()
+    };
 
     if settings.long_format {
         let parts: String = columns()
@@ -96,7 +103,7 @@ struct Column {
 #[allow(unused)]
 #[derive(PartialEq)]
 enum Alignment {
-    Left, Right, Center,
+    Left, Right,
 }
 
 /// Retourne la liste ordonnée des colonnes affichées en mode long.

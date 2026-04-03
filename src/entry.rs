@@ -13,7 +13,11 @@ pub struct Entry {
     pub name: String,
     // pub path: PathBuf,
     pub is_dir: bool,
+
     pub is_symlink: bool,
+    pub is_symlink_valid: bool,
+    pub symlink_destination: PathBuf,
+
     pub size: u64,
     pub modified: Option<SystemTime>,
     pub mode: u32,
@@ -126,6 +130,8 @@ mod tests {
             // path: PathBuf::from("foo"),
             is_dir: false,
             is_symlink: false,
+            is_symlink_valid: false,
+            symlink_destination: PathBuf::new(),
             size: 0,
             modified: Some(SystemTime::now()),
             mode: 0,
@@ -187,14 +193,51 @@ mod tests {
     }
 }
 
+
+/// Construit un `Entry` à partir d'un `DirEntry`. Retourne `None` si les métadonnées
+/// sont inaccessibles.
+fn build_entry(raw: fs::DirEntry) -> Option<Entry> {
+    // file_type() lit le type du lien lui-même, sans suivre la cible
+    let is_symlink = raw.file_type().ok()?.is_symlink();
+
+    let (is_symlink_valid, symlink_destination) = if is_symlink {
+        let destination = fs::read_link(raw.path()).unwrap_or_default();
+        // TODO: en cas d'Err ce n'est pas si simple, la destination existe peut-être, mais les
+        // permissions pour y accéder sont insuffisantes. Au pire il est possible de ne pas traiter
+        // ce cas (comme eza) et de juste afficher la destination sans plus de traitement.
+        // let exists = raw.path().try_exists().unwrap_or(true);
+        let is_valid = fs::metadata(raw.path()).is_ok();
+        (is_valid, destination)
+    } else {
+        (true, PathBuf::new())
+    };
+
+    // raw.metadata() = symlink_metadata : ne suit pas le lien.
+    let metadata = raw.metadata().ok()?;
+
+    let owner = get_user_by_uid(metadata.uid())
+        .map(|u| u.name().to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    Some(Entry {
+        name:               raw.file_name().to_string_lossy().to_string(),
+        is_dir:             metadata.is_dir(),
+        is_symlink,
+        is_symlink_valid,
+        symlink_destination,
+        size:               metadata.len(),
+        modified:           metadata.modified().ok(),
+        mode:               metadata.mode(),
+        owner,
+    })
+}
+
 /// Lit le contenu des répertoires spécifiés dans `settings.paths`.
 /// Les liens symboliques cassés ou les entrées inaccessibles sont silencieusement ignorés.
 pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
     let mut result: Vec<(PathBuf, Vec<Entry>)> = Vec::new();
 
     for path in &settings.paths {
-        let mut dir_contents: Vec<Entry> = Vec::new();
-
         let read_dir = match fs::read_dir(path) {
             Ok(r) => r,
             Err(_) => {
@@ -203,38 +246,9 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
             }
         };
 
-        for raw in read_dir {
-            let raw = raw.unwrap();  // raw : DirEntry
-
-            // file_type() lit le type du lien lui-même, sans suivre la cible
-            let file_type = raw.file_type().unwrap();
-            let is_symlink = file_type.is_symlink();
-
-            // raw.metadata() = symlink_metadata : ne suit pas le lien.
-            // fs::metadata() suit le lien et échoue si la cible est cassée.
-            let metadata = match raw.metadata() {
-                Ok(m) => m,
-                Err(_) => continue, // lien cassé ou permission refusée — on ignore
-            };
-
-            let user = match get_user_by_uid(metadata.uid()) {
-                Some(s) => s.name().to_string_lossy().into_owned(),
-                None => String::from("")
-            };
-
-            let entry = Entry {
-                name: raw.file_name().to_string_lossy().to_string(),
-                // path: raw.path(),
-                is_dir: metadata.is_dir(),
-                is_symlink,
-                size: metadata.len(),
-                modified: metadata.modified().ok(), // Ok(t) → Some(t), Err → None
-                mode: metadata.mode(),
-                owner: user
-            };
-
-            dir_contents.push(entry);
-        }
+        let dir_contents: Vec<Entry> = read_dir
+            .filter_map(|raw| build_entry(raw.unwrap()))
+            .collect();
 
         result.push((path.clone(), dir_contents));
     }

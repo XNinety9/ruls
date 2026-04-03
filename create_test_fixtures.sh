@@ -4,7 +4,7 @@
 
 set -e
 
-ROOT="tests/fixtures"
+ROOT="fixtures"
 
 echo "Création des fixtures dans $ROOT..."
 rm -rf "$ROOT"
@@ -57,8 +57,8 @@ mkdir -p "$ROOT/empty_dir"
 # ----------------------------------------------------------
 # Liens symboliques
 # ----------------------------------------------------------
-ln -sf "$ROOT/files/small.txt" "$ROOT/symlink_to_file"
-ln -sf "$ROOT/dir_a" "$ROOT/symlink_to_dir"
+ln -sf "files/tiny.txt" "$ROOT/symlink_to_file"
+ln -sf "dir_a" "$ROOT/symlink_to_dir"
 ln -sf "/nonexistent/target" "$ROOT/broken_symlink"                  # lien cassé
 
 # ----------------------------------------------------------
