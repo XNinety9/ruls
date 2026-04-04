@@ -13,9 +13,7 @@ use display::{display_entries, DisplayConfig};
 
 /// Point d'entrée : parse les arguments, lit, filtre, trie puis affiche les entrées.
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let settings = Settings::from_args(&args);
+    let settings = Settings::from_args(env::args());
     let entries = read_entries(&settings);
     let entries = filter_entries(entries, &settings);
     let entries = sort_entries(entries, &settings);

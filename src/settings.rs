@@ -32,7 +32,7 @@ pub enum SortBy {
 }
 
 impl Settings {
-    pub fn from_args(args: &[String]) -> Settings {
+    pub fn from_args(args: std::env::Args) -> Settings {
         Settings::parse_from(args)
     }
 }

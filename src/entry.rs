@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use chrono::{DateTime, Local};
 use ansi_term::Style;
 use uzers::get_user_by_uid;
+use std::collections::{HashMap};
 
 use crate::settings::{Settings, SortBy};
 use crate::theme::Theme;
@@ -196,16 +197,12 @@ mod tests {
 
 /// Construit un `Entry` à partir d'un `DirEntry`. Retourne `None` si les métadonnées
 /// sont inaccessibles.
-fn build_entry(raw: fs::DirEntry) -> Option<Entry> {
+fn build_entry(raw: fs::DirEntry, cache: &mut HashMap<u32, String>) -> Option<Entry> {
     // file_type() lit le type du lien lui-même, sans suivre la cible
     let is_symlink = raw.file_type().ok()?.is_symlink();
 
     let (is_symlink_valid, symlink_destination) = if is_symlink {
         let destination = fs::read_link(raw.path()).unwrap_or_default();
-        // TODO: en cas d'Err ce n'est pas si simple, la destination existe peut-être, mais les
-        // permissions pour y accéder sont insuffisantes. Au pire il est possible de ne pas traiter
-        // ce cas (comme eza) et de juste afficher la destination sans plus de traitement.
-        // let exists = raw.path().try_exists().unwrap_or(true);
         let is_valid = fs::metadata(raw.path()).is_ok();
         (is_valid, destination)
     } else {
@@ -215,9 +212,13 @@ fn build_entry(raw: fs::DirEntry) -> Option<Entry> {
     // raw.metadata() = symlink_metadata : ne suit pas le lien.
     let metadata = raw.metadata().ok()?;
 
-    let owner = get_user_by_uid(metadata.uid())
-        .map(|u| u.name().to_string_lossy().into_owned())
-        .unwrap_or_default();
+
+    let uid = metadata.uid();
+    let owner = cache.entry(uid).or_insert_with(|| {
+        get_user_by_uid(metadata.uid())
+            .map(|u| u.name().to_string_lossy().into_owned())
+            .unwrap_or_default()
+    });
 
     Some(Entry {
         name:               raw.file_name().to_string_lossy().to_string(),
@@ -228,7 +229,7 @@ fn build_entry(raw: fs::DirEntry) -> Option<Entry> {
         size:               metadata.len(),
         modified:           metadata.modified().ok(),
         mode:               metadata.mode(),
-        owner,
+        owner: owner.to_string(),
     })
 }
 
@@ -236,6 +237,7 @@ fn build_entry(raw: fs::DirEntry) -> Option<Entry> {
 /// Les liens symboliques cassés ou les entrées inaccessibles sont silencieusement ignorés.
 pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
     let mut result: Vec<(PathBuf, Vec<Entry>)> = Vec::new();
+    let mut userid_cache: HashMap<u32, String> = HashMap::new();
 
     for path in &settings.paths {
         let read_dir = match fs::read_dir(path) {
@@ -247,7 +249,7 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
         };
 
         let dir_contents: Vec<Entry> = read_dir
-            .filter_map(|raw| build_entry(raw.unwrap()))
+            .filter_map(|raw| build_entry(raw.unwrap(), &mut userid_cache))
             .collect();
 
         result.push((path.clone(), dir_contents));
