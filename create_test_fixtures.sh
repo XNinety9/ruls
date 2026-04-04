@@ -209,5 +209,36 @@ chmod 755 "$ROOT/perms/executable.sh"
 echo "private" > "$ROOT/perms/private.txt"
 chmod 600 "$ROOT/perms/private.txt"
 
+# ----------------------------------------------------------
+# Noms longs — pour tester l'affichage multi-colonnes
+# ----------------------------------------------------------
+mkdir -p "$ROOT/long_names"
+# Noms courts (5-10 chars)
+touch "$ROOT/long_names/main.rs"
+touch "$ROOT/long_names/lib.rs"
+touch "$ROOT/long_names/mod.rs"
+touch "$ROOT/long_names/config.toml"
+touch "$ROOT/long_names/README.md"
+# Noms moyens (15-25 chars)
+touch "$ROOT/long_names/authentication.rs"
+touch "$ROOT/long_names/error_handling.rs"
+touch "$ROOT/long_names/database_client.rs"
+touch "$ROOT/long_names/configuration.toml"
+touch "$ROOT/long_names/build_pipeline.sh"
+# Noms longs (30-50 chars)
+touch "$ROOT/long_names/user_authentication_service.rs"
+touch "$ROOT/long_names/database_connection_manager.rs"
+touch "$ROOT/long_names/application_configuration_loader.rs"
+touch "$ROOT/long_names/integration_test_helpers.rs"
+touch "$ROOT/long_names/background_task_scheduler.rs"
+# Noms très longs (50+ chars)
+touch "$ROOT/long_names/this_is_a_very_long_filename_that_should_stress_the_grid_layout.rs"
+touch "$ROOT/long_names/another_extremely_long_filename_for_testing_column_wrapping.txt"
+touch "$ROOT/long_names/yet_another_long_name_to_make_the_grid_interesting.json"
+# Mélange de dossiers avec noms longs
+mkdir -p "$ROOT/long_names/short_dir"
+mkdir -p "$ROOT/long_names/a_somewhat_longer_directory_name"
+mkdir -p "$ROOT/long_names/this_directory_has_an_extremely_long_name_for_testing"
+
 echo "Fixtures créées dans $ROOT :"
 find "$ROOT" | sort

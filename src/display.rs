@@ -24,7 +24,11 @@ pub fn display_entries(entries: &[(PathBuf, Vec<Entry>)], settings: &Settings, d
 /// Affiche une entrée sur une ligne — format long ou format court selon `settings.long_format`.
 fn display_entry(entry: &Entry, cols: &[Column], settings: &Settings, display_config: &DisplayConfig, theme: &Theme) {
     if settings.long_format {
-        let name_and_icon = format!("{} {}", icon_for(entry), entry.name);
+        let name_and_icon = if settings.show_icons {
+            format!("{} {}", icon_for(entry), entry.name)
+        } else {
+            format!("{}", entry.name)
+        };
         let name = if entry.is_dir {
             theme.dir.paint(name_and_icon).to_string()
         } else if entry.is_symlink {
@@ -60,8 +64,13 @@ fn display_entry(entry: &Entry, cols: &[Column], settings: &Settings, display_co
 
         println!("{} {}", parts, name);
     } else {
-        let suffix = if entry.is_dir { "/" } else { "" };
-        println!("{}{}", entry.name, suffix);
+        if settings.show_icons {
+            println!("{} {}", icon_for(entry), entry.name);
+        } else {
+            let suffix = if entry.is_dir { "/" } else { "" };
+            println!("{}{}", entry.name, suffix);
+        };
+
     }
 }
 

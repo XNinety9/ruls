@@ -7,7 +7,7 @@ set -e
 RULS="./target/release/ruls"
 BENCH_ROOT="bench_fixtures"
 WARMUP=10
-RUNS=50
+RUNS=500
 
 # ----------------------------------------------------------
 # Vérifications

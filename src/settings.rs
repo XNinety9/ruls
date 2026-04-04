@@ -4,6 +4,10 @@ use clap::{Parser, ValueEnum};
 #[derive(Parser)]
 #[command(name = "ruls", about = "A modern ls replacement written in Rust")]
 pub struct Settings {
+    /// Show icon for each file
+    #[arg(long = "icons")]
+    pub show_icons: bool,
+
     /// Show column headers in long format
     #[arg(long = "header")]
     pub show_header: bool,
