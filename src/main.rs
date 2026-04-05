@@ -18,6 +18,6 @@ fn main() {
     let entries = read_entries(&settings);
     let entries = filter_entries(entries, &settings);
     let entries = sort_entries(entries, &settings);
-    let display_config = DisplayConfig::from_entries(&entries, &settings);
+    let display_config = DisplayConfig::from_entries(&entries);
     display_entries(&entries, &settings, &display_config);
 }

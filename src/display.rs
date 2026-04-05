@@ -54,7 +54,16 @@ fn display_dir(path: &PathBuf, contents: &Vec<Entry>, show_header: bool, setting
             for column in 0..n_columns {
                 let index = column * n_rows + row;
                 if index < contents.len() {
-                    display_entry(&contents[index], &columns, settings, display_config, theme);
+                    let entry = &contents[index];
+                    let is_last_col = column == n_columns - 1;
+                    let suffix_len = if !settings.show_icons && entry.is_dir { 1 } else { 0 };
+                    let visible_len = entry.name.len() + suffix_len
+                        + if settings.show_icons { 2 } else { 0 };
+                    display_entry(entry, &columns, settings, display_config, theme);
+                    if !is_last_col {
+                        let pad = column_width.saturating_sub(visible_len);
+                        print!("{:pad$}", "", pad = pad);
+                    }
                 }
             }
             println!();
@@ -105,12 +114,11 @@ fn display_entry(entry: &Entry, cols: &[Column], settings: &Settings, display_co
 
         println!("{} {}", parts, name);
     } else {
-        let ending = if display_config.add_newline_after_each_entry {"\n"} else {""};
         if settings.show_icons {
-            print!("{} {}{}", icon_for(entry), entry.name, ending);
+            print!("{} {}", icon_for(entry), entry.name);
         } else {
             let suffix = if entry.is_dir { "/" } else { "" };
-            print!("{}{}{}", entry.name, suffix, ending);
+            print!("{}{}", entry.name, suffix);
         };
 
     }
@@ -147,12 +155,11 @@ pub struct DisplayConfig {
     pub col_widths:   Vec<usize>,
     pub terminal_width: u16,
     pub max_name_length: usize,
-    pub add_newline_after_each_entry: bool,
 }
 
 impl DisplayConfig {
     /// Parcourt toutes les entrées pour calculer la largeur maximale de chaque colonne.
-    pub fn from_entries(entries: &[(PathBuf, Vec<Entry>)], settings: &Settings) -> DisplayConfig {
+    pub fn from_entries(entries: &[(PathBuf, Vec<Entry>)]) -> DisplayConfig {
         let cols = columns();
         let mut max_name_length = 0;
         let mut col_widths: Vec<usize> = cols.iter().map(|c| c.header.len()).collect();
@@ -180,7 +187,6 @@ impl DisplayConfig {
             col_widths,
             terminal_width: width,
             max_name_length: max_name_length,
-            add_newline_after_each_entry: !settings.long_format,
         }
     }
 }
