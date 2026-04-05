@@ -8,7 +8,7 @@
             "cargo": {
                 "args": ["build", "--bin=ruls"]
             },
-            "args": ["-a", "-l", "--header", "tests/fixtures"],
+            "args": ["-a", "fixtures/long_names"],
             "cwd": "${workspaceFolder}"
         }
     ]
