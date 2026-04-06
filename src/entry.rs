@@ -249,7 +249,7 @@ pub fn read_entries(settings: &Settings) -> Vec<(PathBuf, Vec<Entry>)> {
         };
 
         let dir_contents: Vec<Entry> = read_dir
-            .filter_map(|raw| build_entry(raw.unwrap(), &mut userid_cache))
+            .filter_map(|raw| build_entry(raw.ok()?, &mut userid_cache))
             .collect();
 
         result.push((path.clone(), dir_contents));
